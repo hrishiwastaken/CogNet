@@ -2,12 +2,18 @@ import re
 import hashlib
 
 # Check if sentence-transformers is available
-SENTENCE_TRANSFORMERS_AVAILABLE = False
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    pass
+SENTENCE_TRANSFORMERS_AVAILABLE = None
+
+def check_sentence_transformers():
+    global SENTENCE_TRANSFORMERS_AVAILABLE
+    if SENTENCE_TRANSFORMERS_AVAILABLE is not None:
+        return SENTENCE_TRANSFORMERS_AVAILABLE
+    try:
+        from sentence_transformers import SentenceTransformer
+        SENTENCE_TRANSFORMERS_AVAILABLE = True
+    except ImportError:
+        SENTENCE_TRANSFORMERS_AVAILABLE = False
+    return SENTENCE_TRANSFORMERS_AVAILABLE
 
 _model = None
 
@@ -16,10 +22,11 @@ def get_transformer_model():
     Returns the initialized semantic transformer model.
     """
     global _model, SENTENCE_TRANSFORMERS_AVAILABLE
-    if not SENTENCE_TRANSFORMERS_AVAILABLE:
+    if not check_sentence_transformers():
         return None
     if _model is None:
         try:
+            from sentence_transformers import SentenceTransformer
             print("[CogNet] Initializing local semantic model (all-MiniLM-L6-v2)...")
             _model = SentenceTransformer("all-MiniLM-L6-v2")
             print("[CogNet] Model successfully preloaded.")
@@ -28,6 +35,7 @@ def get_transformer_model():
             SENTENCE_TRANSFORMERS_AVAILABLE = False
             return None
     return _model
+
 
 def split_into_sentences(text: str) -> list[str]:
     if not text:

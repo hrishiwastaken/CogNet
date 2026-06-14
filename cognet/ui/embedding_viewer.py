@@ -92,7 +92,7 @@ class EmbeddingViewer(QWidget):
         raw_vectors = []
         colors = []
         
-        category_palette = ["#00e5ff", "#b388ff", "#ff4081", "#ffd54f", "#69f0ae", "#ff6e40", "#40c4ff"]
+        category_palette = ["#38bdf8", "#facc15", "#60a5fa", "#fbbf24", "#0ea5e9", "#eab308", "#93c5fd"]
 
         def get_color(cat):
             return category_palette[abs(hash(cat.lower())) % len(category_palette)]
@@ -116,8 +116,8 @@ class EmbeddingViewer(QWidget):
                     })
 
         ax = self.fig.add_subplot(projection='3d')
-        self.fig.patch.set_facecolor('#0d0e12')
-        ax.set_facecolor('#0d0e12')
+        self.fig.patch.set_facecolor('#07090e')
+        ax.set_facecolor('#07090e')
 
         if not raw_vectors:
             ax.text(0, 0, 0, "No vectors generated yet.\nWrite your first entry!", 
@@ -131,22 +131,52 @@ class EmbeddingViewer(QWidget):
         ys = coords[:, 1]
         zs = coords[:, 2]
 
+        # 1. Establish strict symmetric limits centered at the origin
+        max_val = np.max(np.abs(coords)) if coords.size > 0 else 1.0
+        limit = max(max_val * 1.2, 1.0)
+        
+        ax.set_xlim(-limit, limit)
+        ax.set_ylim(-limit, limit)
+        ax.set_zlim(-limit, limit)
+        
+        # 2. Fix the aspect ratio to a perfect cube
+        ax.set_box_aspect([1, 1, 1])
+        
+        # 3. Use clean modern dark styling by turning default axes decorations off
+        ax.set_axis_off()
+
+        # 4. Draw our own stable, clean coordinate axes passing through the origin (0, 0, 0)
+        axis_color = '#1e293b'
+        axis_alpha = 0.5
+        ax.plot([-limit, limit], [0, 0], [0, 0], color=axis_color, linestyle='-', linewidth=1, alpha=axis_alpha)
+        ax.plot([0, 0], [-limit, limit], [0, 0], color=axis_color, linestyle='-', linewidth=1, alpha=axis_alpha)
+        ax.plot([0, 0], [0, 0], [-limit, limit], color=axis_color, linestyle='-', linewidth=1, alpha=axis_alpha)
+
+        # 5. Draw subtle grid on Z=0 (the ground/base plane)
+        grid_color = '#0f172a'
+        grid_ticks = 4
+        for val in np.linspace(-limit, limit, grid_ticks * 2 + 1):
+            if abs(val) < 1e-5:
+                continue  # Skip primary axes
+            # Line parallel to Y-axis
+            ax.plot([val, val], [-limit, limit], [0, 0], color=grid_color, linestyle=':', linewidth=0.5, alpha=0.3)
+            # Line parallel to X-axis
+            ax.plot([-limit, limit], [val, val], [0, 0], color=grid_color, linestyle=':', linewidth=0.5, alpha=0.3)
+
+        # 6. Add modern text labels at the endpoints
+        label_color = '#8f8f9d'
+        ax.text(limit * 1.05, 0, 0, "+X", color=label_color, fontsize=8, ha='center', va='center')
+        ax.text(0, limit * 1.05, 0, "+Y", color=label_color, fontsize=8, ha='center', va='center')
+        ax.text(0, 0, limit * 1.05, "+Z", color=label_color, fontsize=8, ha='center', va='center')
+
+        # 7. Draw vector lines and arrows from (0,0,0) to target coordinate (x,y,z)
         for x, y, z, col in zip(xs, ys, zs, colors):
-            ax.plot([0, x], [0, y], [0, z], color=col, alpha=0.3, linewidth=1)
-            ax.quiver(0, 0, 0, x, y, z, color=col, alpha=0.4, arrow_length_ratio=0.1, linewidths=0.5)
+            ax.plot([0, x], [0, y], [0, z], color=col, alpha=0.25, linewidth=1.2)
+            # Use small thin quivers to denote direction, starting from the origin (0, 0, 0)
+            ax.quiver(0, 0, 0, x, y, z, color=col, alpha=0.3, arrow_length_ratio=0.08, linewidths=0.5)
 
-        self.sc = ax.scatter(xs, ys, zs, c=colors, s=60, depthshade=True, edgecolors='#0d0e12', linewidths=0.5)
-
-        ax.xaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-        ax.yaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-        ax.zaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-        
-        ax.grid(True, color='#2a2a32', linestyle=':', linewidth=0.5, alpha=0.4)
-        ax.tick_params(colors='#8f8f9d', labelsize=8)
-        
-        ax.set_xlabel('Dim X', color='#8f8f9d', fontsize=8)
-        ax.set_ylabel('Dim Y', color='#8f8f9d', fontsize=8)
-        ax.set_zlabel('Dim Z', color='#8f8f9d', fontsize=8)
+        # 8. Render the scatter nodes
+        self.sc = ax.scatter(xs, ys, zs, c=colors, s=60, depthshade=True, edgecolors='#07090e', linewidths=0.5)
 
         # Mouse Listeners
         self.canvas.mpl_connect('motion_notify_event', self.on_hover)
@@ -164,7 +194,7 @@ class EmbeddingViewer(QWidget):
                 category = self.categories[idx]
                 self.hud_category.setText(f"CATEGORY: {category} (Right-click to Delete Vector)")
                 self.hud_text.setText(f'"{sentence}"')
-                self.hud_text.setStyleSheet("color: #00e5ff; font-size: 14px; font-weight: 500;")
+                self.hud_text.setStyleSheet("color: #38bdf8; font-size: 14px; font-weight: 500;")
         else:
             self.hud_category.setText("SYSTEM STATUS: ACTIVE")
             self.hud_text.setText("Hover over any vector node to view mental syntax...")

@@ -1,3 +1,5 @@
 
 venv/
 *.json
+cognet_web.err.log
+cognet_web.out.log
