@@ -1,7 +1,6 @@
 import re
 import hashlib
 
-# Check if sentence-transformers is available
 SENTENCE_TRANSFORMERS_AVAILABLE = None
 
 def check_sentence_transformers():
@@ -20,6 +19,7 @@ _model = None
 def get_transformer_model():
     """
     Returns the initialized semantic transformer model.
+    Upgraded to 'all-mpnet-base-v2' for superior semantic distinction and clustering.
     """
     global _model, SENTENCE_TRANSFORMERS_AVAILABLE
     if not check_sentence_transformers():
@@ -27,9 +27,9 @@ def get_transformer_model():
     if _model is None:
         try:
             from sentence_transformers import SentenceTransformer
-            print("[CogNet] Initializing local semantic model (all-MiniLM-L6-v2)...")
-            _model = SentenceTransformer("all-MiniLM-L6-v2")
-            print("[CogNet] Model successfully preloaded.")
+            print("[CogNet] Initializing High-Fidelity Semantic Model (all-mpnet-base-v2)...")
+            _model = SentenceTransformer("all-mpnet-base-v2")
+            print("[CogNet] MPNet Model successfully preloaded.")
         except Exception as e:
             print(f"[CogNet] Warning: Could not initialize model: {e}")
             SENTENCE_TRANSFORMERS_AVAILABLE = False
@@ -45,8 +45,7 @@ def split_into_sentences(text: str) -> list[str]:
 
 def generate_3d_vector(sentence: str, category: str) -> list[float]:
     """
-    Generates a dense vector. Uses the preloaded 384-dimensional semantic engine if available,
-    otherwise falls back to the deterministic lexical-hashing algorithm.
+    Generates a dense vector using the high-fidelity MPNet model.
     """
     model = get_transformer_model()
     if model is not None:
@@ -57,7 +56,7 @@ def generate_3d_vector(sentence: str, category: str) -> list[float]:
             print(f"[CogNet] Core Embedding Error: {e}")
             pass
             
-    # 3D Lexical Hashing(Fallback)
+    # Fallback Lexical Hash
     cat_hash = hashlib.md5(category.lower().encode('utf-8')).digest()
     cx = ((cat_hash[0] / 255.0) - 0.5) * 6.0
     cy = ((cat_hash[1] / 255.0) - 0.5) * 6.0
