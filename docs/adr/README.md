@@ -14,9 +14,12 @@ code or data depends on it (CLAUDE.md, "If the specification is ambiguous").
 | [ADR-005](ADR-005-trust-taint-reliability.md) | Trust, Taint, and Contextual Reliability | Accepted | I-008, I-011, I-015 |
 | [ADR-006](ADR-006-legacy-application-disposition.md) | Legacy Application Disposition | Accepted | I-020 |
 | [ADR-007](ADR-007-governance-tooling-status.md) | Governance Tooling Status | Accepted | I-013, I-004 |
+| [ADR-008](ADR-008-causal-admission-and-assessment-policy.md) | Causal Admission and Assessment Policy | Accepted | I-004, I-005, I-006, I-010 |
 
 ## Approval record
 
-All seven ADRs above were approved by the architect on 2026-07-08, in response
-to the Phase-0 reconnaissance and gap analysis. See each ADR's Approval
-section for the specific decision.
+ADR-001 through ADR-007 were approved by the architect on 2026-07-08, in
+response to the Phase-0 reconnaissance and gap analysis. ADR-008 was
+approved by the architect the same day as the final Phase-0 task, closing
+the one gate item ADR-001..007 left open (causal admission policy). See
+each ADR's Approval section for the specific decision.

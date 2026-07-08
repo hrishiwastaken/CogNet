@@ -17,11 +17,12 @@ Phase 0 passes only when:
       promotion-provenance mechanics per ADR-004.
 - [x] Trust/taint model is approved. — `TrustDomain`/`TaintState` enums +
       `SourceReliabilityAssessment` per ADR-005.
-- [ ] Causal admission policy is approved. — **PARTIAL**, carried over.
-      `I-004`/D-006/causal-status states exist, but the transition policy
-      between causal-status states (e.g. what evidence moves
-      `CAUSAL_HYPOTHESIS` → `CAUSAL_SUPPORTED`) has not been specified or
-      submitted to the architect. Tracked, not hidden.
+- [x] Causal admission policy is approved. — ADR-008: `CausalAssessment` as
+      a scoped, versioned object separate from edge confidence; `EvidenceClass`
+      enum with an anti-accumulation rule forbidding `ASSOCIATIVE_SIGNAL`
+      from ever justifying a transition beyond `ASSOCIATED`; explicit
+      transition table requiring a `CausalTransitionRecord` for every
+      change; contested/rejected status is scoped and non-destructive.
 - [x] Controller budget units are defined. — `BudgetVector` (9 dimensions) +
       normalized-scalar-is-projection-only rule per ADR-002, in
       `ARCHITECTURE.md`.
@@ -31,14 +32,14 @@ Phase 0 passes only when:
       sketches", one concrete synthetic task per metric category.
 - [x] ADR template exists. — `docs/ADR_TEMPLATE.md`; `docs/adr/` now
       populated with ADR-001..007.
-- [x] No unresolved expensive-to-reverse ambiguity remains hidden. — the one
-      open item above (causal admission transitions) and governance-file
-      authorship (ADR-007 §3) are explicitly tracked, not silently decided
-      or concealed.
+- [x] No unresolved expensive-to-reverse ambiguity remains hidden. — the
+      former open item (causal admission transitions) is now closed by
+      ADR-008. Governance-file authorship (ADR-007 §3) was resolved by
+      explicit architect authorization the same day; see status log.
 
-**Status: 12/13 satisfied.** One item (causal admission transition policy)
-remains open and is explicitly tracked rather than blocking silently.
-Architect sign-off required before this is marked fully closed.
+**Status: 13/13 satisfied.** Phase 0 gate passes. Architect sign-off
+recorded via the same message that authorized ADR-008 and governance-file
+authorship.
 
 ### Phase 0 forbidden work
 - semantic resolver implementation
@@ -55,6 +56,11 @@ Architect sign-off required before this is marked fully closed.
   decisions. Gates updated above; 12/13 now satisfied. Governance
   (`.claude/agents/*`, `.claude/skills/*`) confirmed empty in all repository
   history, not silently reinvented — see ADR-007.
+- 2026-07-08 — Architect issued ADR-008 (causal admission and assessment
+  policy), closing the last open gate item, and explicitly authorized
+  authoring `.claude/agents/*` and `.claude/skills/*` content (resolving
+  ADR-007 §3's pending-authorization condition). Gate now 13/13. **Phase 0
+  passes.**
 
 ## Phase 1 Gate
 

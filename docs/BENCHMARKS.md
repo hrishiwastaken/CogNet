@@ -97,6 +97,54 @@ them. Scored on causal false-positive rate (a correct system reports
 `ASSOCIATED`, never promotes to `CAUSES`) and on path relevance vs inference
 validity scored separately (I-004, I-009).
 
+### Causal admission — task sketches and adversarial tests (ADR-008)
+
+**Accumulation trap.** Generate N (e.g. 500) synthetic `ASSOCIATIVE_SIGNAL`
+observations co-activating the same pair of propositions, with steadily
+increasing aggregate weight, and zero `SOURCED_CAUSAL_ASSERTION` /
+`INTERVENTION_EVIDENCE` / `DOMAIN_RULE_MECHANISM` evidence. Expected: the
+`CausalAssessment` for the pair stays at `ASSOCIATED` regardless of N. A
+system that transitions to `CAUSAL_HYPOTHESIS` or beyond at any N fails —
+this is the direct test of ADR-008's anti-accumulation rule.
+
+**Legitimate intervention promotion.** One `INTERVENTION_EVIDENCE` record
+(a synthetic "manipulate X, observe effect on Y" observation) is introduced
+alongside a handful of `ASSOCIATIVE_SIGNAL` records. Expected: transition to
+at least `CAUSAL_HYPOTHESIS`, with a `CausalTransitionRecord` whose
+`triggering_evidence_ids` cite only the intervention evidence, never the
+associative signals.
+
+**Contested reversal.** A claim reaches `CAUSAL_SUPPORTED` via
+`INTERVENTION_EVIDENCE`. A later `CONTESTING_EVIDENCE` record (failed
+replication) arrives in the same scope. Expected: a new `CausalAssessment`
+version at `CAUSAL_CONTESTED`, appended (not overwriting) the prior
+`CAUSAL_SUPPORTED` version; both remain queryable by `as_of_time` (I-005).
+
+**Cross-scope contest isolation.** The same contesting evidence as above is
+recorded only in `PROJECT` scope A. Scope B's independently computed
+`CausalAssessment` for the same claim is queried. Expected: scope B's
+assessment is unaffected unless the contest was explicitly promoted per
+ADR-004 — no automatic cross-scope contest propagation (I-006).
+
+**Adversarial — evidence-class mislabeling attack.** An adversarial or
+careless ingestion adapter labels `ASSOCIATIVE_SIGNAL` evidence as
+`SOURCED_CAUSAL_ASSERTION` to force a transition it should not be able to
+trigger. Expected defense: the admission policy does not trust
+adapter-declared `evidence_class` alone for a transition-granting class —
+`SOURCED_CAUSAL_ASSERTION` claims are cross-checked against the source's
+`SourceReliabilityAssessment` for the relevant `context_domain` (ADR-005)
+before being counted as transition-triggering. A system that promotes on
+adapter-declared class alone, with no reliability cross-check, fails this
+test. This is the adversarial-tester agent's canonical probe for I-004 +
+I-011 (untrusted content must not self-promote).
+
+**Adversarial — silent rejection attack.** An attempt to move a
+`CausalAssessment` to `CAUSAL_REJECTED` (or to delete/overwrite a contested
+assessment) without a `CausalTransitionRecord` carrying
+`triggering_evidence_ids` and a `reviewer_ref`. Expected defense: the
+operation is refused at the construction/type level, not merely logged as a
+warning.
+
 ### Systems — "budget exhaustion under fan-out"
 A query whose naive expansion would visit an unbounded number of graph
 nodes. Scored on whether termination fires on the correct `BudgetVector`

@@ -266,16 +266,81 @@ Epistemic/inference:
 - PREVENTS
 - CAUSES
 
-## Causal status
+## Causal admission and assessment (ADR-008)
 
+```text
+CausalStatus
 - ASSOCIATED
 - CAUSAL_HYPOTHESIS
 - CAUSAL_SUPPORTED
 - CAUSAL_VERIFIED
 - CAUSAL_CONTESTED
 - CAUSAL_REJECTED
+```
 
 `CO_ACTIVATED_WITH -> CAUSES` is forbidden.
+
+Causal justification is **not** a confidence number on the edge. It is a
+separate, scoped, versioned object — the same pattern as `BeliefState`
+being separate from `Proposition`:
+
+```text
+EvidenceClass
+- ASSOCIATIVE_SIGNAL          # co-activation, embedding similarity
+- SOURCED_CAUSAL_ASSERTION    # explicit causal claim from a source
+- INTERVENTION_EVIDENCE       # controlled/observed intervention + effect
+- DOMAIN_RULE_MECHANISM       # validated domain rule/mechanism
+- DERIVED_INFERENCE           # auditable derivation from other causal-grade evidence
+- CONTESTING_EVIDENCE         # counter-observation, failed replication, alternative explanation
+
+CausalAssessment
+- causal_assessment_id: UUIDv7
+- causal_proposition_ref: reference to the specific causal claim
+    (source ref, target ref, proposed mechanism ref)
+- scope_id: UUIDv7
+- context_domain: str | None
+- causal_status: CausalStatus
+- contested: bool
+- supporting_evidence: list[(evidence_id, evidence_class)]
+- contesting_evidence: list[(evidence_id, evidence_class)]
+- transition_history: list[CausalTransitionRecord]
+- as_of_time: datetime
+- computed_from_evidence_ids: list[UUIDv7]
+- computation_version: str
+- provenance_node_id: UUIDv7
+
+CausalTransitionRecord
+- from_status: CausalStatus
+- to_status: CausalStatus
+- triggering_evidence_ids: list[UUIDv7]
+- reviewer_ref: str
+- transitioned_at: datetime
+```
+
+**Anti-accumulation rule:** `ASSOCIATIVE_SIGNAL` evidence, in any quantity,
+never contributes — individually, summed, averaged, weighted, or
+thresholded — to a status beyond `ASSOCIATED`. A `CausalAssessment` computed
+entirely from `ASSOCIATIVE_SIGNAL` evidence is rejected by construction.
+
+**Transitions** (every one requires a `CausalTransitionRecord`; none are
+silent):
+
+| From | To | Requires (never `ASSOCIATIVE_SIGNAL` alone) |
+|---|---|---|
+| `ASSOCIATED` | `CAUSAL_HYPOTHESIS` | `SOURCED_CAUSAL_ASSERTION`, `DOMAIN_RULE_MECHANISM`, or `DERIVED_INFERENCE` |
+| `CAUSAL_HYPOTHESIS` | `CAUSAL_SUPPORTED` | `INTERVENTION_EVIDENCE`, independent corroborating `SOURCED_CAUSAL_ASSERTION`, or `DOMAIN_RULE_MECHANISM` |
+| `CAUSAL_SUPPORTED` | `CAUSAL_VERIFIED` | multiple independent `INTERVENTION_EVIDENCE`, or high-verification `DOMAIN_RULE_MECHANISM`, without unresolved contest |
+| any | `CAUSAL_CONTESTED` | any credible `CONTESTING_EVIDENCE`, not yet reviewed |
+| `CAUSAL_CONTESTED` | `CAUSAL_REJECTED` | contesting evidence validated, prior support found insufficient (explicit review) |
+| `CAUSAL_CONTESTED` | prior status | contesting evidence invalidated/retracted (explicit review) |
+
+**Contested/rejected is contextual:** `CausalAssessment` is scoped and may
+be further narrowed by `context_domain` (mirroring
+`SourceReliabilityAssessment`). The same causal claim may be
+`CAUSAL_SUPPORTED` in one scope and `CAUSAL_CONTESTED` in another; contest
+propagates across scopes only via explicit promotion (see "Scope
+promotion" above), never automatically. `CAUSAL_REJECTED` is a status, not
+a deletion — the assessment and its `transition_history` remain queryable.
 
 ## Resolution state and ResolutionRecord (ADR-001)
 
