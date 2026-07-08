@@ -4,19 +4,41 @@
 
 Phase 0 passes only when:
 
-- [ ] Kernel ontology is approved.
-- [ ] MemoryObject schema is versioned.
-- [ ] Proposition, Evidence, BeliefState schemas are versioned.
-- [ ] Scope model is approved.
-- [ ] Valid-time vs transaction-time semantics are explicit.
-- [ ] Provenance DAG schema is approved.
-- [ ] Trust/taint model is approved.
-- [ ] Causal admission policy is approved.
-- [ ] Controller budget units are defined.
-- [ ] Stopping conditions are defined.
-- [ ] Benchmark datasets/tasks are sketched.
-- [ ] ADR template exists.
-- [ ] No unresolved expensive-to-reverse ambiguity remains hidden.
+- [x] Kernel ontology is approved. — `MEMORY_IR.md` v0.2, approved 2026-07-08.
+- [x] MemoryObject schema is versioned. — `MEMORY_IR.md` v0.2; identity
+      semantics per ADR-001.
+- [x] Proposition, Evidence, BeliefState schemas are versioned. — same v0.2
+      freeze; `BeliefState.source_reliability` clarified per ADR-005.
+- [x] Scope model is approved. — `MEMORY_IR.md` scope types + promotion
+      semantics per ADR-004.
+- [x] Valid-time vs transaction-time semantics are explicit. — `MEMORY_IR.md`
+      "Time semantics".
+- [x] Provenance DAG schema is approved. — `MEMORY_IR.md` `ProvenanceNode`;
+      promotion-provenance mechanics per ADR-004.
+- [x] Trust/taint model is approved. — `TrustDomain`/`TaintState` enums +
+      `SourceReliabilityAssessment` per ADR-005.
+- [ ] Causal admission policy is approved. — **PARTIAL**, carried over.
+      `I-004`/D-006/causal-status states exist, but the transition policy
+      between causal-status states (e.g. what evidence moves
+      `CAUSAL_HYPOTHESIS` → `CAUSAL_SUPPORTED`) has not been specified or
+      submitted to the architect. Tracked, not hidden.
+- [x] Controller budget units are defined. — `BudgetVector` (9 dimensions) +
+      normalized-scalar-is-projection-only rule per ADR-002, in
+      `ARCHITECTURE.md`.
+- [x] Stopping conditions are defined. — `ARCHITECTURE.md` "Required
+      termination".
+- [x] Benchmark datasets/tasks are sketched. — `BENCHMARKS.md` "Phase-0 task
+      sketches", one concrete synthetic task per metric category.
+- [x] ADR template exists. — `docs/ADR_TEMPLATE.md`; `docs/adr/` now
+      populated with ADR-001..007.
+- [x] No unresolved expensive-to-reverse ambiguity remains hidden. — the one
+      open item above (causal admission transitions) and governance-file
+      authorship (ADR-007 §3) are explicitly tracked, not silently decided
+      or concealed.
+
+**Status: 12/13 satisfied.** One item (causal admission transition policy)
+remains open and is explicitly tracked rather than blocking silently.
+Architect sign-off required before this is marked fully closed.
 
 ### Phase 0 forbidden work
 - semantic resolver implementation
@@ -25,6 +47,14 @@ Phase 0 passes only when:
 - curiosity engine
 - RL
 - automatic abstraction
+
+### Phase-0 status log
+- 2026-07-08 — Initial reconnaissance and gap analysis (12 PARTIAL/FAIL of
+  13 items).
+- 2026-07-08 — Architect reviewed and issued ADR-001 through ADR-007
+  decisions. Gates updated above; 12/13 now satisfied. Governance
+  (`.claude/agents/*`, `.claude/skills/*`) confirmed empty in all repository
+  history, not silently reinvented — see ADR-007.
 
 ## Phase 1 Gate
 

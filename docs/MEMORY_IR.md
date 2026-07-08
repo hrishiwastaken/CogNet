@@ -1,6 +1,9 @@
-# CogNet Memory IR v0.1
+# CogNet Memory IR v0.2
 
-This document freezes the initial domain model for Phase 0/1.
+Status: Approved (Phase 0) — 2026-07-08, incorporating ADR-001, ADR-004,
+ADR-005. See `docs/adr/README.md`.
+
+This document freezes the domain model for Phase 0/1.
 
 ## Kernel ontology
 
@@ -16,20 +19,38 @@ This document freezes the initial domain model for Phase 0/1.
 
 Extensions inherit lifecycle, provenance, scope, and permission semantics.
 
+## Identity semantics (ADR-001)
+
+Canonical identity for every `MemoryObject`, `Edge`, `ResolutionRecord`, and
+`ProvenanceNode` is a runtime-generated **UUIDv7**. UUIDv7 is chosen over
+content-addressed IDs because canonical identity must survive payload
+mutation, belief updates, and deduplication — content hashes change when
+content changes, which would otherwise change "who" the object is.
+
+Content hashes are **not** canonical identity. Where present (e.g.
+`content_hash` on a `MemoryObject`), they exist only as:
+- deduplication fingerprints
+- integrity fingerprints
+- exact-content comparison signals
+
+Ambiguous or unresolved identity never produces a placeholder entity. See
+`ResolutionRecord` below.
+
 ## Common MemoryObject
 
 ```text
 MemoryObject
-- id: UUID
+- id: UUIDv7                    # canonical identity, see Identity semantics
+- content_hash: str | None      # non-canonical fingerprint, dedup/integrity only
 - kernel_type: KernelType
 - subtype: str
-- scope_id: UUID
+- scope_id: UUIDv7
 - payload: typed payload
 - created_at: datetime
 - valid_time: TimeInterval | None
 - transaction_time: datetime
-- source_id: UUID
-- provenance_node_id: UUID
+- source_id: UUIDv7
+- provenance_node_id: UUIDv7
 - trust_domain: TrustDomain
 - taint_state: TaintState
 - access_state: HOT | WARM | COLD | ARCHIVED | PRUNED
@@ -55,6 +76,83 @@ MemoryObject
 
 Every memory object belongs to exactly one primary scope in Phase 1.
 Cross-scope references are allowed only through explicit policy.
+
+## Scope promotion (ADR-004)
+
+Cross-scope **access** (read) uses reference-by-ID plus explicit policy and
+capability checks; it does not change an object's scope.
+
+Cross-scope **promotion** never silently copies or moves an object.
+Promotion always creates a **new** `MemoryObject` with:
+- a new canonical ID (a new UUIDv7 — never the source object's ID)
+- an explicit `DERIVED_FROM` edge to the source object
+- a `ProvenanceNode` recording the promotion operation, including
+  `source_scope_id`, `target_scope_id`, and the policy decision that
+  authorized it
+
+The original object is left unchanged in its original scope: same
+`scope_id`, same trust/taint history, same content. This preserves
+auditability, scope isolation, historical truth, and provenance.
+
+## Trust, taint, and contextual reliability (ADR-005)
+
+Four dimensions in this cluster are independent and must never be derived
+one from another:
+
+```text
+TrustDomain            # security/origin boundary; set once at ingestion
+- LOCAL_SYSTEM
+- USER_ASSERTED
+- TRUSTED_TOOL
+- UNTRUSTED_TOOL
+- IMPORTED_DOCUMENT
+- EXTERNAL_NETWORK
+- MODEL_GENERATED
+
+TaintState             # integrity/promotion restriction
+- CLEAN
+- UNVERIFIED
+- TAINTED
+- QUARANTINED
+```
+
+`SourceReliability` is **not** a field on `Source` or `MemoryObject`. It is a
+computed, contextual assessment — the same source can be reliable in one
+context and not another (e.g. a `USER_ASSERTED` source is typically reliable
+for personal preferences, weak for third-party scientific claims; a
+`TRUSTED_TOOL` can still be stale or misconfigured):
+
+```text
+SourceReliabilityAssessment
+- source_id: UUIDv7
+- context_domain: str
+- reliability_score: float
+- basis:
+    observation_method
+    verification_history_ids: list[UUIDv7]
+    historical_success_count
+    historical_failure_count
+- as_of_time: datetime
+- computed_from_evidence_ids: list[UUIDv7]
+- computation_version: str
+```
+
+The fourth dimension, **epistemic confidence**, is `BeliefState.confidence`
+(see below) — how justified a specific proposition currently is. It is
+computed from evidence, not copied from any source-level field.
+
+No function may map `TrustDomain -> TaintState`,
+`TrustDomain -> SourceReliability`, or any other pairwise derivation across
+{`TrustDomain`, `TaintState`, `SourceReliability`, epistemic confidence}.
+Each is set/computed independently.
+
+**Historical immutability:** original evidence retains its original
+`TrustDomain` and `TaintState` permanently. Later corroboration or
+verification never rewrites or "cleans" historical evidence. If previously
+unverified or tainted evidence contributes to a later-promoted proposition,
+the promotion produces a new derived proposition and/or `BeliefState` with
+its own provenance, verification evidence, promotion operation, and
+`computation_version` — the original evidence object is untouched.
 
 ## Time semantics
 
@@ -92,6 +190,12 @@ Evidence
 ## BeliefState
 
 Belief is not a MemoryObject rewrite.
+
+`BeliefState.source_reliability` is a summary drawn from the
+`SourceReliabilityAssessment` records relevant to `computed_from_evidence_ids`
+for this proposition's `context_domain` — it is not a redefinition of
+`SourceReliability` and does not derive from `TrustDomain` (see "Trust,
+taint, and contextual reliability" above).
 
 ```text
 BeliefState
@@ -173,14 +277,36 @@ Epistemic/inference:
 
 `CO_ACTIVATED_WITH -> CAUSES` is forbidden.
 
-## Resolution state
+## Resolution state and ResolutionRecord (ADR-001)
 
+```text
+ResolutionState
 - RESOLVED
 - AMBIGUOUS
 - NEW_IDENTITY
 - DEFERRED
+```
 
-Ambiguous candidates are stored with scores. No forced merge.
+Ambiguous or unresolved identity is never represented by a fake placeholder
+entity. Instead it is represented by a `ResolutionRecord`:
+
+```text
+ResolutionRecord
+- resolution_record_id: UUIDv7
+- mention_ref: reference to the input/mention that triggered resolution
+- candidate_entity_ids: list[UUIDv7]
+- candidate_scores: list[float]      # parallel to candidate_entity_ids
+- resolution_state: ResolutionState
+- evidence_ids: list[UUIDv7]
+- provenance_node_id: UUIDv7
+- created_at: datetime
+- resolved_at: datetime | None
+```
+
+An `AMBIGUOUS` or `DEFERRED` `ResolutionRecord` may exist indefinitely
+without committing to a canonical entity. Delayed commitment is a
+first-class, non-error state (I-014) — resolution logic must never force a
+merge just to eliminate an open `ResolutionRecord`.
 
 ## Provenance DAG node
 

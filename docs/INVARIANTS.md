@@ -1,5 +1,8 @@
 # CogNet Architectural Invariants
 
+Status: Approved (Phase 0) — 2026-07-08. See `docs/adr/README.md` for
+decisions (ADR-001..007) that operationalize several of these invariants.
+
 These are executable design constraints, not inspirational statements.
 
 ## I-001 — Algorithm First

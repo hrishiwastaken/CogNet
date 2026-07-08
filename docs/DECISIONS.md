@@ -1,6 +1,11 @@
 # CogNet Phase-0 Decisions
 
-These are the default decisions for v2.1. Change through ADR, not silent implementation drift.
+Status: Approved (Phase 0) — 2026-07-08.
+
+These are the default decisions for v2.1. Change through ADR, not silent
+implementation drift. See `docs/adr/README.md` for decisions (ADR-001..007)
+that formalize and extend several of these (D-011 persistence → ADR-003;
+D-002/D-003 scope → ADR-004; identity underlying D-001 ingestion → ADR-001).
 
 ## D-001 Memory domain
 CogNet accepts arbitrary observations:
