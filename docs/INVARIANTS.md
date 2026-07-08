@@ -1,126 +1,87 @@
-# CogNet v2.1 Invariants
+# CogNet Architectural Invariants
 
-Non-negotiable constraints that define the system's correctness and reliability guarantees.
+These are executable design constraints, not inspirational statements.
 
----
+## I-001 — Algorithm First
+Every subsystem must prefer deterministic rules, parsers, graph algorithms, local embeddings,
+or small classifiers before LLM escalation.
 
-## 1. LLM never owns canonical memory mutation
+**Violation example:** calling an LLM to decide whether two exact IDs are identical.
 
-**Principle:** The LLM is a *reader and suggester*, never the authoritative writer of stored memory state.
+## I-002 — Canonical Mutation Ownership
+Agents submit observations, evidence, proposals, and feedback. CogNet owns canonical mutation.
 
-**Enforcement:**
-- All memory writes require explicit user confirmation or deterministic application logic
-- LLM outputs are proposals; they cannot directly modify persisted state
-- User intent, application rules, or scheduled tasks own mutation gates
-- Audit trail logs *who* (not just what) changed memory
+**Violation example:** an agent directly setting a belief to VERIFIED.
 
-**Rationale:** LLM inference is probabilistic and can hallucinate. Canonical state must remain under human/deterministic control.
+## I-003 — Finite Reasoning
+Every reasoning session has a budget, step count, stopping rules, and no-progress detection.
 
----
+## I-004 — Causality Is Not Co-Activation
+`CO_ACTIVATED_WITH` can never directly promote to `CAUSES`.
 
-## 2. No unbounded reasoning loop
+A causal edge requires an admitted ground:
+- sourced causal assertion
+- intervention evidence
+- validated domain rule/mechanism
+- auditable derived inference
+- or provisional `CAUSAL_HYPOTHESIS`
 
-**Principle:** Reasoning chains must have explicit depth/step limits and termination conditions.
+## I-005 — Contradictions Are Preserved
+Conflicting claims are not silently overwritten. Scope and valid-time overlap are checked first.
 
-**Enforcement:**
-- All inference paths have maximum iteration counts (e.g., max 5 retrieval rounds)
-- Loops terminate on fixed timeout, step limit, or explicit convergence signal—never on "I think I'm done"
-- Each loop round has measurable cost; system fails fast if budget exhausted
-- Reasoning traces are recorded for audit
+## I-006 — Scope Isolation
+No cross-scope promotion without explicit policy/capability.
 
-**Rationale:** LLMs can get stuck in circular or divergent reasoning. Bounded loops prevent resource exhaustion and cascading failures.
+## I-007 — Memory != Belief
+Stored propositions preserve history. Belief states are computed and may change independently.
 
----
+## I-008 — Multi-Dimensional Value
+Do not collapse:
+- truth confidence
+- empirical utility
+- accessibility
+- goal relevance
 
-## 3. No causal edge from co-activation
+into one permanent scalar.
 
-**Principle:** Two concepts co-activating in the same retrieval result does not imply they caused, affected, or are related to each other.
+## I-009 — Association != Inference
+Associative traversal discovers candidates. Inference structures justify conclusions.
 
-**Enforcement:**
-- Associative recall (embeddings, search) is labeled as such—never treated as causal inference
-- Downstream use of co-activated items must re-verify their relationship
-- Causal claims require explicit graph edges or policy-governed inference rules
-- Mixing associative and causal reasoning must be auditable and flagged
+## I-010 — Provenance Is Auditable
+Derived claims and decisions must trace through a provenance DAG to sources.
 
-**Rationale:** Embeddings find similar items; similarity is not evidence of causation. Confusing the two leads to false inferences.
+## I-011 — Trust Boundaries Survive Ingestion
+Untrusted content remains tainted until an explicit promotion rule succeeds.
 
----
+## I-012 — Rare != Disposable
+Low frequency alone is insufficient for destructive deletion.
 
-## 4. No silent contradiction overwrite
+## I-013 — Provider Independence
+Core kernel modules must not import Anthropic, OpenAI, Google, or other model-provider SDKs.
 
-**Principle:** When new information contradicts stored facts, the system must surface the contradiction, not silently replace it.
+## I-014 — Ambiguity Is Representable
+Identity resolution may remain unresolved. Delayed commitment is a valid state.
 
-**Enforcement:**
-- Conflict detection runs on all memory updates
-- Contradictions halt the write and require user/policy resolution
-- Overwrite only happens after explicit approval or automatic conflict resolution policy is applied
-- Conflict log is immutable and queryable
+## I-015 — Typed Uncertainty
+Uncertainty should distinguish at least:
+- epistemic
+- aleatoric
+- ambiguity
+- conflict
+- staleness
+- missing evidence
 
-**Rationale:** Silent overwrites hide data loss and inconsistencies. Transparency ensures users understand what changed and why.
+## I-016 — JSON Is a Boundary
+JSON is allowed at APIs and persistence boundaries. Internal domain logic uses typed structures.
 
----
+## I-017 — Benchmark Claims Need Baselines
+Performance claims require controlled comparison against relevant baselines.
 
-## 5. No cross-scope promotion without policy
+## I-018 — No Unrestricted LLM Graph Rewriting
+LLM output is a proposal/evidence source, not an automatic canonical graph mutation.
 
-**Principle:** Information, rules, or inferences valid in one scope (e.g., one conversation, one user context) cannot be promoted to a wider scope (e.g., shared memory, default behavior) without explicit policy approval.
+## I-019 — Failed Paths Are Contextual
+Dead-end anti-priors are scoped, decaying, and bypassable by materially new evidence.
 
-**Enforcement:**
-- Scope is explicit on all memory; privacy/access defaults to most restrictive
-- Promotion requires change event + human review or predefined policy rule
-- Cross-scope access is logged with requester identity
-- Policy violations raise alerts before state change
-
-**Rationale:** Prevents context leakage, privacy violations, and unintended generalization of local facts to global systems.
-
----
-
-## 6. Associative path ≠ inference proof
-
-**Principle:** A retrieval path (A → B via embeddings) is evidence for association, not proof of the inference A → B.
-
-**Enforcement:**
-- Retrieval results include confidence scores and rank; they are not assertions
-- Claims built on retrieved items must cite the source and note the uncertainty
-- Inference proofs require explicit rules, causal edges, or corroborating evidence
-- Reports distinguish "retrieved" from "concluded"
-
-**Rationale:** LLMs conflate search results with validated facts. Maintaining the distinction prevents false reasoning.
-
----
-
-## 7. Accessibility ≠ truth ≠ utility ≠ goal relevance
-
-**Principle:** An item being retrievable, factually correct, useful, and relevant to current goals are four independent properties.
-
-**Enforcement:**
-- Memory items carry metadata on all four dimensions (access level, validity, utility, goal relevance)
-- Retrieval must specify which dimension(s) matter for the current query
-- Conflating dimensions (e.g., "retrieve all useful things" vs. "retrieve all relevant goals") is an error
-- Queries that mix dimensions are flagged as ambiguous
-
-**Rationale:** These are orthogonal concerns. A true fact may not be useful; an accessible item may be false or off-goal. Clear separation prevents silent errors.
-
----
-
-## 8. Core kernel never imports provider SDKs
-
-**Principle:** The core reasoning kernel is provider-agnostic and does not depend on any LLM SDK (OpenAI, Anthropic, etc.).
-
-**Enforcement:**
-- Core kernel (memory IR, retrieval, policy engine, conflict resolution) is provider-independent
-- Provider-specific code (API calls, token counting, model selection) lives in an adapter/plugin layer
-- Kernel dependencies are vendored or minimal (only stdlib + lightweight abstractions)
-- Adapter layer is swappable; kernel never calls it directly for state mutation
-
-**Rationale:** Prevents vendor lock-in, simplifies testing, and ensures the reasoning engine survives provider changes.
-
----
-
-## Audit & Verification
-
-All invariants are:
-- **Testable:** Each has measurable assertions
-- **Traceable:** Violations generate logs with context
-- **Recoverable:** Violations trigger alerts before harm propagates
-
-Invariant violations are *always* errors—never silent, never user-invisible.
+## I-020 — Phase Discipline
+Do not implement later-phase research features inside earlier phases without an approved ADR.
